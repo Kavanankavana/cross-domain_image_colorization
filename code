@@ -1,0 +1,86 @@
+import cv2
+import numpy as np
+from tkinter import Tk, filedialog, Button, Canvas, Label, StringVar, OptionMenu
+from PIL import Image, ImageTk
+
+original_image = None
+display_image = None
+domain_var = None
+
+  def load_image():
+    global original_image, display_image
+    file_path = filedialog.askopenfilename()
+    if file_path:
+        original_image = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
+        if original_image is None:
+            print("Error loading image.")
+            return
+        display_image = original_image.copy()
+        show_image(display_image)
+
+def show_image(img):
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_pil = Image.fromarray(img_rgb)
+    img_tk = ImageTk.PhotoImage(image=img_pil)
+    canvas.config(width=img_tk.width(), height=img_tk.height())
+    canvas.create_image(0, 0, anchor="nw", image=img_tk)
+    canvas.image = img_tk
+
+def apply_colorization():
+    global display_image, original_image
+    if original_image is None:
+        return
+
+    domain = domain_var.get()
+
+    # Ensure image is 8-bit
+    img8 = cv2.convertScaleAbs(original_image)
+
+    if domain == "Grayscale":
+        if len(img8.shape) == 3 and img8.shape[2] > 1:
+            gray = cv2.cvtColor(img8, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = img8
+        colorized = cv2.applyColorMap(gray, cv2.COLORMAP_JET)
+
+    elif domain == "Sketch":
+        gray = cv2.cvtColor(img8, cv2.COLOR_BGR2GRAY)
+        colorized = cv2.applyColorMap(gray, cv2.COLORMAP_PINK)
+
+    elif domain == "Infrared":
+        if len(img8.shape) == 3 and img8.shape[2] > 1:
+            gray = cv2.cvtColor(img8, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = img8
+        colorized = cv2.applyColorMap(gray, cv2.COLORMAP_INFERNO)
+
+    else:
+        colorized = img8
+
+    display_image = colorized
+    show_image(display_image)
+    cv2.imwrite("cross_domain_colorized.jpg", display_image)
+    print("✅ Saved as cross_domain_colorized.jpg")
+
+# GUI Setup
+root = Tk()
+root.title("Cross-Domain Image Colorization")
+
+btn_load = Button(root, text="Load Image", command=load_image)
+btn_load.pack()
+
+Label(root, text="Select Domain:").pack()
+domain_var = StringVar(root)
+domain_var.set("Grayscale")
+domain_options = ["Grayscale", "Sketch", "Infrared"]
+domain_menu = OptionMenu(root, domain_var, *domain_options)
+domain_menu.pack()
+
+btn_apply = Button(root, text="Apply Colorization", command=apply_colorization)
+btn_apply.pack()
+
+canvas = Canvas(root)
+canvas.pack()
+
+root.mainloop()
+  
